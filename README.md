@@ -67,10 +67,6 @@ The game map is a grid of tiles, where each tile can either be empty, a wall, a 
 
 Combat takes place in a turn-based system, where players can choose to attack, heal, use special abilities, or run away. The goal is to defeat the enemies while managing health and resources.
 
-## License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
 ## Contributing
 
 Feel free to fork the project and submit pull requests with improvements, bug fixes, or new features.
