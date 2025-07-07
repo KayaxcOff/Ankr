@@ -4,6 +4,40 @@
 #include <memory>
 #include <random>
 #include <chrono>
+#include <map>
+#include <utility>
+
+// for Windows
+#ifdef _WIN32
+#include <conio.h>
+char getch_direct() {
+    return _getch();
+}
+
+// for Linux and macOS
+#else
+#include <termios.h>
+#include <unistd.h>
+char getch_direct() {
+    char buf = 0;
+    struct termios old = {0};
+    if (tcgetattr(0, &old) < 0)
+        perror("tcsetattr()");
+    old.c_lflag &= ~ICANON;
+    old.c_lflag &= ~ECHO;
+    old.c_cc[VMIN] = 1;
+    old.c_cc[VTIME] = 0;
+    if (tcsetattr(0, TCSANOW, &old) < 0)
+        perror("tcsetattr ICANON");
+    if (read(0, &buf, 1) < 1)
+        perror("read()");
+    old.c_lflag |= ICANON;
+    old.c_lflag |= ECHO;
+    if (tcsetattr(0, TCSADRAIN, &old) < 0)
+        perror("tcsetattr ~ICANON");
+    return buf;
+}
+#endif
 
 class Character {
 protected:
@@ -223,12 +257,13 @@ private:
 class GameManager {
 private:
     std::unique_ptr<Character> player;
-    std::unique_ptr<Enemy> enemies;
+    std::map<std::pair<int, int>, std::unique_ptr<Enemy>> enemiesOnMap;
+    std::string gameMessage;
 
     Map gameMap;
-    int sizeX, sizeY;
+    int playerX, playerY;
 public:
-    GameManager() : gameMap(15, 10), sizeX(2), sizeY(2) {
+    GameManager() : gameMap(15, 10), playerX(2), playerY(2), gameMessage("") {
         std::cout << "Welcome to Ankr" << std::endl;
     }
 
@@ -249,7 +284,8 @@ public:
                 y = distY(generator);
             } while (gameMap.getTile(x, y) != TileType::EMPTY);
 
-            enemies.push_back(std::make_unique<Enemy>());
+            enemiesOnMap[std::make_pair(x, y)] = std::make_unique<Enemy>();
+            //enemies.push_back(std::make_unique<Enemy>());
             gameMap.setTile(x, y, TileType::ENEMY);
 
             std::cout << "An Enemy has spawned at (" << x << ", " << y << ")." << std::endl;
@@ -275,9 +311,60 @@ public:
         player->displayInfo();
     }
 
+    void startCombat(int enemyX, int enemyY) {
+        auto& enemy = enemiesOnMap.at({enemyX, enemyY});
+
+        while (player->isAlive() && enemy->isAlive()) {
+            #ifdef _WIN32
+            system("cls");
+            #else
+            system("clear");
+            #endif
+
+            std::cout << "---- Combat ----" << std::endl;
+            std::cout << player->getName() << " HP: " << player->getHealthStatus() << std::endl;
+            std::cout << enemy->getName() << " HP: " << enemy->getHealthStatus() << std::endl;
+            std::cout << "Choose your action:\n1. Attack\n2. Use Special Ability\n3. Heal\n4. Run Away\n";
+            int action;
+            std::cout << "Enter your choice (1-4): ";
+            std::cin >> action;
+
+            if (action == 1) {
+                enemy->takeDamage(20);
+            } else if (action == 2) {
+                player->useSpecialAbility(*enemy);
+            } else if (action == 3) {
+                player->heal(15);
+            } else if (action == 4) {
+                std::cout << player->getName() << " runs away from the combat!" << std::endl;
+                return;
+            } else {
+                std::cout << "Invalid action! Try again." << std::endl;
+                continue;
+            }
+
+            if (enemy->isAlive()) {
+                enemy->useSpecialAbility(*player);
+            }
+            std::cout << "Devam etmek icin bir tusa basin...";
+            std::cin.ignore();
+            std::cin.get();
+        }
+            if (!player->isAlive()) {
+                std::cout << player->getName() << " is dead." << std::endl;
+                std::cout << "Game Over!" << std::endl;
+                exit(0);
+            } else {
+                std::cout << enemy->getName() << " is defeated!" << std::endl;
+                enemiesOnMap.erase({enemyX, enemyY});
+                std::cout << "Press Enter to continue." << std::endl;
+                std::cin.get();
+            }
+    }
+
     void explorationLoop() {
         char input = ' ';
-        while (input != 'q') {
+        while (input != 'q' && input != 'Q') {
 
             #ifdef _WIN32
             system("cls");
@@ -285,17 +372,20 @@ public:
             system("clear");
             #endif
 
-            std::cout << "You are at (" << sizeX << ", " << sizeY << "). Use WASD to move. Press 'q' to quit.\n";
+            std::cout << "You are at (" << playerX << ", " << playerY << "). Use WASD to move. Press 'q' to quit.\n";
+            std::cout << "Hp: " << player->getHealthStatus() << std::endl;
             gameMap.display();
+            std::cout << "\n" << gameMessage << std::endl;
+            gameMessage = "";
 
             std::cout << "Move: ";
-            std::cin >> input;
+            input = getch_direct();
 
 
-            gameMap.setTile(sizeX, sizeY, TileType::EMPTY);
+            gameMap.setTile(playerX, playerY, TileType::EMPTY);
 
-            int nextX = sizeX;
-            int nextY = sizeY;
+            int nextX = playerX;
+            int nextY = playerY;
 
             switch (input) {
                 case 'w': case 'W': nextY--; break;
@@ -306,27 +396,34 @@ public:
                 default: std::cout << "Invalid command!\n"; continue;
             }
 
+            TileType nextTile = gameMap.getTile(nextX, nextY);
 
-            if (gameMap.getTile(nextX, nextY) != TileType::WALL) {
-
-                sizeX = nextX;
-                sizeY = nextY;
+            if (nextTile == TileType::WALL) {
+                std::cout << "You hit the wall!\n";
+            } else if (nextTile == TileType::ENEMY) {
+                std::cout << "You met the enemy\n";
+                startCombat(nextX, nextY);
+                gameMap.setTile(nextX, nextY, TileType::EMPTY);
+                playerX = nextX;
+                playerY = nextY;
             } else {
-                std::cout << "You hit a wall!\n";
+                playerX = nextX;
+                playerY = nextY;
             }
-
-            gameMap.setTile(sizeX, sizeY, TileType::PLAYER);
+            gameMap.setTile(playerX, playerY, TileType::PLAYER);
         }
     }
 
     void runGame() {
         chooseCharacter();
-
-        gameMap.setTile(sizeX, sizeY, TileType::PLAYER);
+        spawnEnemies(3);
+        gameMap.setTile(playerX, playerY, TileType::PLAYER);
         explorationLoop();
     }
 };
 
 int main() {
-
+    GameManager game;
+    game.runGame();
+    return 0;
 }
