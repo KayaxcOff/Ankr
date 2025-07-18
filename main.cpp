@@ -1,22 +1,23 @@
 #include <iostream>
 #include <string>
 #include <vector>
+#include <cstdlib>
 #include <memory>
 #include <random>
 #include <chrono>
 #include <map>
 #include <utility>
 #include <limits>
-#include <conio.h>
-#include <termios.h>
-#include <unistd.h>
 
 #ifdef _WIN32
+#include <conio.h>
 char getch_direct() {
     return _getch();
 }
 
 #else
+#include <termios.h>
+#include <unistd.h>
 char getch_direct() {
     char buf = 0;
     struct termios old = {0};
@@ -53,38 +54,48 @@ protected:
 public:
     Character(std::string name, int hp, int maxHp)
         : character_name(name), health(hp), maxHealth(maxHp) {};
+
     virtual ~Character() {};
+
     void takeDamage(int damage) {
         health -= damage;
         if (health <= 0) health = 0;
         std::cout << character_name << " takes " << damage << " damage. Health is now " << health << std::endl;
     }
+
     void heal(int amount) {
         health += amount;
         if (health > maxHealth) health = maxHealth;
         std::cout << character_name << " heals " << amount << " health. Health is now " << health << std::endl;
     }
+
     bool isAlive() const {
         return health > 0;
     }
+
     void setHealth() {
         health = 0;
     }
+
     std::string getName() const {
         return character_name;
     }
+
     std::string getHealthStatus() const {
         return std::to_string(health);
     }
+
     virtual void displayInfo() const = 0;
     virtual void useSpecialAbility(Character& target, GameManager* gameManager = nullptr) = 0;
 };
+
 enum class TileType {
     EMPTY = 0,
     WALL,
     HERO,
     ENEMY
 };
+
 class Map {
 private:
     int width;
@@ -97,11 +108,13 @@ public:
             grid[0][i] = TileType::WALL;
             grid[height - 1][i] = TileType::WALL;
         }
+        
         for (int i = 0; i < height; ++i) {
             grid[i][0] = TileType::WALL;
             grid[i][width - 1] = TileType::WALL;
         }
     }
+
     void display() const {
         for (int y = 0; y < height; ++y) {
             for (int x = 0; x < width; ++x) {
@@ -115,20 +128,24 @@ public:
             std::cout << std::endl;
         }
     }
+
     void setTile(int x, int y, TileType type) {
         if (y >= 0 && y < height && x >= 0 && x < width) {
             grid[y][x] = type;
         }
     }
+
     TileType getTile(int x, int y) const {
         if (y >= 0 && y < height && x >= 0 && x < width) {
             return grid[y][x];
         }
         return TileType::WALL;
     }
+
     int getWidth() const { return width; }
     int getHeight() const { return height; }
 };
+
 class Aether : public Character {
 public:
     Aether() : Character("Aether", 65, 80) {}
@@ -136,6 +153,7 @@ public:
         std::cout << "The name is " << character_name << " and the health is " << health << std::endl;
         std::cout << "Aether is smartest person in the universe, he made a object with magic called Sphere of Everything. I believe object's name is clear" << std::endl;
     }
+
     void useSpecialAbility(Character& target, GameManager* gameManager = nullptr) override {
         int sphereOfEverything;
         std::cout << "1- Power Strike\n2- Cosmic Heal\n3- Universe Reset\n4- Teleport" << std::endl;
@@ -155,18 +173,23 @@ private:
         target.takeDamage(damage);
         std::cout << character_name << " uses Power Strike on " << target.getName() << " for " << damage << " damage." << std::endl;
     }
+
     void cosmicHeal() {
         int healAmount = 100;
         health += healAmount;
         if (health > maxHealth) maxHealth = health;
         std::cout << character_name << " uses Cosmic Heal. Health is now " << health << std::endl;
     }
+
     int universeReset() {
         std::cout << character_name << " uses Universe Reset!" << std::endl;
+        std::exit(0);
         return 0;
     }
+
     void teleport(Character& target, GameManager* gameManager);
 };
+
 class Synax : public Character {
 public:
     Synax() : Character("Synax", 76, 110) {}
@@ -174,6 +197,7 @@ public:
         std::cout << "The name is " << character_name << " and the health is " << health << std::endl;
         std::cout << "Synax is a princess, she has special eyes. She can kill everything she can see" << std::endl;
     }
+
     void useSpecialAbility(Character& target, GameManager* gameManager = nullptr) override {
         int activateEyes;
         std::cout << "1- Eyes of Death\n2- Eyes of Heal" << std::endl;
@@ -194,6 +218,7 @@ private:
             std::cout << target.getName() << " is already dead!" << std::endl;
         }
     }
+
     void eyes_heal(Character& target) {
         int amount;
         std::cout << "Enter amount to heal: ";
@@ -205,6 +230,7 @@ private:
         std::cout << character_name << " steals " << amount << " health from " << target.getName() << std::endl;
     }
 };
+
 class Kahray : public Character {
 public:
     Kahray() : Character("Kahray", 120, 150) {}
@@ -212,6 +238,7 @@ public:
         std::cout << "The name is " << character_name << " and the health is " << health << std::endl;
         std::cout << "Kahray is a warrior, he has a sword. He can protect himself and his friends" << std::endl;
     }
+
     void useSpecialAbility(Character& target, GameManager* gameManager = nullptr) override {
         int warriorAbility;
         std::cout << "Choose one of Kahray's abilities " << std::endl;
@@ -234,6 +261,7 @@ private:
         std::cout << character_name << " uses Wall Shield. Health is now " << health << std::endl;
     }
 };
+
 class Yroy : public Character {
 public:
     Yroy() : Character("Yroy", 50, 55) {}
@@ -241,6 +269,7 @@ public:
         std::cout << "The name is " << character_name << " and the health is " << health << std::endl;
         std::cout << "Yroy is a child, he wants to be a hero. He is not strong, but he is smart and his idol is Aether" << std::endl;
     }
+
     void useSpecialAbility(Character &target, GameManager *gameManager = nullptr) override {
         int miniAbility;
         std::cout << "1- Mini Attack\n2- Mini Heal" << std::endl;
@@ -258,6 +287,7 @@ private:
         std::cout << character_name << " uses Mini Attack on " << target.getName() << " for " << damage << " damage." << std::endl;
         target.takeDamage(damage);
     }
+
     void miniHeal(Character &target) {
         int damage = 10;
         std::cout << character_name << " steals " << damage << " health from " << target.getName() << std::endl;
@@ -266,6 +296,7 @@ private:
         if (health > maxHealth) health = maxHealth;
     }
 };
+
 class Batley : public Character {
 public:
     Batley() : Character("Batley", 80, 90) {}
@@ -273,6 +304,7 @@ public:
         std::cout << "The name is " << character_name << " and the health is " << health << std::endl;
         std::cout << "What a old man. In past, he was a great warrior. But now, he is old and weak. He can not fight anymore, but universe need him" << std::endl;
     }
+
     void useSpecialAbility(Character &target, GameManager *gameManager = nullptr) override {
         lastAttack(target);
     }
@@ -283,6 +315,7 @@ private:
         target.takeDamage(damage);
     }
 };
+
 class Enemy : public Character {
 public:
     Enemy(std::string name = "Generic Enemy", int hp = 50, int maxHp = 50)
@@ -297,6 +330,7 @@ public:
         target.takeDamage(damage);
     }
 };
+
 class Skeleton : public Enemy {
 public:
     Skeleton() : Enemy("Skeleton", 40, 40) {}
@@ -304,12 +338,14 @@ public:
         std::cout << "The name is " << character_name << " and the health is " << health << std::endl;
         std::cout << "A Skeleton, a mindless creature, it attacks anything that moves." << std::endl;
     }
+
     void useSpecialAbility(Character &target, GameManager *gameManager = nullptr) override {
         int damage = 15;
         std::cout << character_name << " uses Bone Crush on " << target.getName() << " for " << damage << " damage." << std::endl;
         target.takeDamage(damage);
     }
 };
+
 class Witch : public Enemy {
 public:
     Witch() : Enemy("Witch", 60, 65) {}
@@ -317,6 +353,7 @@ public:
         std::cout << "The name is " << character_name << " and the health is " << health << std::endl;
         std::cout << "A Witch, she casts dark spells to weaken her enemies." << std::endl;
     }
+
     void useSpecialAbility(Character &target, GameManager *gameManager = nullptr) override {
         unsigned seed = std::chrono::high_resolution_clock::now().time_since_epoch().count();
         std::mt19937 generator(seed);
@@ -331,6 +368,7 @@ private:
     void deathMagic(Character &target) { int magic = 20; target.takeDamage(magic); }
     void curse(Character &target) { int curse = 10; target.takeDamage(curse); }
 };
+
 class Kheon : public Enemy {
 public:
     Kheon() : Enemy("Kheon", 70, 125) {}
@@ -338,6 +376,7 @@ public:
         std::cout << "The name is " << character_name << " and the health is " << health << std::endl;
         std::cout << "Kheon and Aether, they were friends. When Kheon's love Oix is dead, Kheon wanted use Sphere of Everything to bring her to life but Aether was against that idea" << std::endl;
     }
+
     void useSpecialAbility(Character &target, GameManager *gameManager = nullptr) override {
         unsigned seed = std::chrono::high_resolution_clock::now().time_since_epoch().count();
         std::mt19937 generator(seed);
@@ -355,6 +394,7 @@ private:
         std::cout << target.getName() << " is burned to death!" << std::endl;
         target.setHealth();
     }
+
     void fireShield(Character &target) {
         int fireDamage = 60;
         target.takeDamage(fireDamage);
@@ -362,8 +402,13 @@ private:
         if (health > maxHealth) health = maxHealth;
         std::cout << character_name << " uses Fire Shield, dealing " << fireDamage << " damage and healing for " << (fireDamage/2) << std::endl;
     }
-    int burnMap() { return 0; }
+
+    int burnMap() { 
+        std::exit(0);
+        return 0; 
+    }
 };
+
 class GameManager {
 private:
     std::unique_ptr<Character> player;
@@ -477,6 +522,7 @@ public:
             std::cin.get();
         }
     }
+
     void explorationLoop() {
         char input = ' ';
         while (input != 'q' && input != 'Q') {
@@ -526,6 +572,7 @@ public:
             }
         }
     }
+
     void runGame() {
         chooseCharacter();
         std::cout << "\nPress Enter to start the game...";
@@ -534,9 +581,11 @@ public:
         gameMap.setTile(playerX, playerY, TileType::HERO);
         explorationLoop();
     }
+
     Map& getMap() {
         return gameMap;
     }
+
     void setPlayerPosition(int x, int y) {
         gameMap.setTile(playerX, playerY, TileType::EMPTY);
         playerX = x;
